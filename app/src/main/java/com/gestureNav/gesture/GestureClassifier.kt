@@ -6,10 +6,10 @@ import kotlin.math.sqrt
 
 object GestureClassifier {
 
-    private const val PINCH_THRESHOLD = 0.06f
+    private const val PINCH_THRESHOLD = 0.09f
     private const val SWIPE_X_THRESHOLD = 0.10f
     private const val SWIPE_Y_THRESHOLD = 0.08f
-    private const val SCROLL_Y_THRESHOLD = 0.06f
+    private const val SCROLL_Y_THRESHOLD = 0.04f
     private const val FIST_CURL_THRESHOLD = 0.04f
 
     private var motionStartY: Float? = null
@@ -79,6 +79,7 @@ object GestureClassifier {
             val dx = currentX - startX
 
             if (motionFrames >= MOTION_SAMPLE_FRAMES && framesSinceGesture > GESTURE_COOLDOWN_FRAMES) {
+                DebugLogger.log("finger-scroll dy=$dy dx=$dx (threshold=$SCROLL_Y_THRESHOLD)")
                 if (abs(dy) > SCROLL_Y_THRESHOLD) {
                     framesSinceGesture = 0
                     clearMotion()
