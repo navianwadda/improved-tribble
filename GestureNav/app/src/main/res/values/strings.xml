@@ -1,4 +1,0 @@
-<resources>
-    <string name="app_name">GestureNav</string>
-    <string name="accessibility_service_description">GestureNav uses your front camera to detect hand gestures and control scrolling, navigation, and system actions — all without touching your phone.</string>
-</resources>
