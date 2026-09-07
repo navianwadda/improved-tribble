@@ -139,10 +139,11 @@ class GestureAccessibilityService : AccessibilityService(), LifecycleOwner {
         val h = screenHeight
         val cx = w / 2f
         val cy = h / 2f
+        val scrollDist = h * 0.40f
 
         when (event) {
-            GestureEvent.SCROLL_UP -> performSwipe(cx, cy + 400f, cx, cy - 400f)
-            GestureEvent.SCROLL_DOWN -> performSwipe(cx, cy - 400f, cx, cy + 400f)
+            GestureEvent.SCROLL_UP -> performSwipe(cx, cy + scrollDist, cx, cy - scrollDist, durationMs = 500)
+            GestureEvent.SCROLL_DOWN -> performSwipe(cx, cy - scrollDist, cx, cy + scrollDist, durationMs = 500)
             GestureEvent.SWIPE_RIGHT -> performGlobalAction(GLOBAL_ACTION_BACK)
             GestureEvent.SWIPE_LEFT -> performGlobalAction(GLOBAL_ACTION_RECENTS)
             GestureEvent.FIST_CLOSED -> performGlobalAction(GLOBAL_ACTION_HOME)
@@ -151,12 +152,12 @@ class GestureAccessibilityService : AccessibilityService(), LifecycleOwner {
         }
     }
 
-    private fun performSwipe(startX: Float, startY: Float, endX: Float, endY: Float) {
+    private fun performSwipe(startX: Float, startY: Float, endX: Float, endY: Float, durationMs: Long = 400) {
         val path = Path().apply {
             moveTo(startX, startY)
             lineTo(endX, endY)
         }
-        val stroke = GestureDescription.StrokeDescription(path, 0, 300)
+        val stroke = GestureDescription.StrokeDescription(path, 0, durationMs)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         dispatchGesture(gesture, null, null)
     }
