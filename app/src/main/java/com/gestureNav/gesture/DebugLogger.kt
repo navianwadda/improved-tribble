@@ -20,23 +20,28 @@ object DebugLogger {
     private var contentResolverContext: Context? = null
 
     fun start(context: Context) {
-        val fileName = "gesturenav_debug_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.txt"
+        try {
+            val fileName = "gesturenav_debug_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.txt"
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, "text/plain")
-                put(MediaStore.Downloads.IS_PENDING, 1)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                fileUri = uri
+                contentResolverContext = context.applicationContext
+                stream = uri?.let { resolver.openOutputStream(it) }
+            } else {
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(dir, fileName)
+                stream = FileOutputStream(file)
             }
-            val resolver = context.contentResolver
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            fileUri = uri
-            contentResolverContext = context.applicationContext
-            stream = uri?.let { resolver.openOutputStream(it) }
-        } else {
-            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val file = File(dir, fileName)
-            stream = FileOutputStream(file)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            stream = null
         }
     }
 
@@ -70,4 +75,3 @@ object DebugLogger {
         contentResolverContext = null
     }
 }
-
