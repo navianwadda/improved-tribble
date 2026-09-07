@@ -26,24 +26,23 @@ jobs:
             -not -path "./.git/*" \
           | while read zipfile; do
               echo "Unzipping: $zipfile"
-              target="${zipfile%.zip}"
               tmpdir=$(mktemp -d)
               unzip -o "$zipfile" -d "$tmpdir"
               rm "$zipfile"
 
-              # If zip extracted into a single top-level folder, flatten it
+              # If single top-level folder, flatten it
               count=$(ls -A "$tmpdir" | wc -l)
               first="$tmpdir/$(ls -A "$tmpdir" | head -1)"
 
               if [ "$count" -eq 1 ] && [ -d "$first" ]; then
-                echo "Flattening: $first → $target/"
-                mv "$first" "$target"
+                echo "Flattening to root"
+                cp -r "$first/." .
               else
-                mv "$tmpdir" "$target"
+                cp -r "$tmpdir/." .
               fi
 
               rm -rf "$tmpdir"
-              echo "Done: $zipfile → $target/"
+              echo "Done: $zipfile → repo root"
             done
 
       - name: Commit extracted files
