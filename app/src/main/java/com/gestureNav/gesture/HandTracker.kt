@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import androidx.camera.core.ImageProxy
+import androidx.camera.core.ExperimentalGetImage
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -42,13 +43,17 @@ class HandTracker(
                     }
                 }
             }
-            .setErrorListener { _, _ -> }
+            .setErrorListener { error ->
+                error.printStackTrace()
+            }
             .build()
 
         handLandmarker = HandLandmarker.createFromOptions(context, options)
     }
 
+    @androidx.annotation.OptIn(ExperimentalGetImage::class)
     fun processFrame(imageProxy: ImageProxy) {
+        val mediaImage = imageProxy.image ?: run { imageProxy.close(); return }
         val bitmap = imageProxy.toBitmap()
         val matrix = Matrix().apply {
             postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
