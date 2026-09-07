@@ -2,9 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <uses-feature android:name="android.hardware.camera.front" android:required="true" />
@@ -27,10 +24,9 @@
 
         <service
             android:name=".service.GestureAccessibilityService"
-            android:exported="true"
+            android:exported="false"
             android:label="GestureNav"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:foregroundServiceType="camera">
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
