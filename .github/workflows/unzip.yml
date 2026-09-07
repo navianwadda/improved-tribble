@@ -30,19 +30,16 @@ jobs:
               unzip -o "$zipfile" -d "$tmpdir"
               rm "$zipfile"
 
-              # If single top-level folder, flatten it
-              count=$(ls -A "$tmpdir" | wc -l)
-              first="$tmpdir/$(ls -A "$tmpdir" | head -1)"
+              # Walk into nested folders until we find actual files
+              src="$tmpdir"
+              while [ "$(ls -A "$src" | wc -l)" -eq 1 ] && [ -d "$src/$(ls -A "$src")" ]; do
+                src="$src/$(ls -A "$src")"
+              done
 
-              if [ "$count" -eq 1 ] && [ -d "$first" ]; then
-                echo "Flattening to root"
-                cp -r "$first/." .
-              else
-                cp -r "$tmpdir/." .
-              fi
-
+              echo "Extracting from: $src"
+              cp -r "$src/." .
               rm -rf "$tmpdir"
-              echo "Done: $zipfile → repo root"
+              echo "Done"
             done
 
       - name: Commit extracted files
