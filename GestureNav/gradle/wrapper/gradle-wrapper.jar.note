@@ -1,8 +1,0 @@
-The gradle-wrapper.jar is a binary file that cannot be stored as text.
-GitHub Actions workflow uses actions/setup-gradle@v3 which does NOT require
-this jar to be present - it sets up Gradle directly from the distributionUrl
-in gradle-wrapper.properties.
-
-If you want to build locally WITHOUT Actions, run:
-  gradle wrapper --gradle-version=8.7
-to regenerate the wrapper files including the jar.
