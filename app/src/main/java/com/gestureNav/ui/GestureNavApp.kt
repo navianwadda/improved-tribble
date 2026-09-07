@@ -108,14 +108,16 @@ fun GestureNavApp() {
             if (allReady) {
                 Button(
                     onClick = {
-                        val action = if (serviceRunning) GestureAccessibilityService.ACTION_STOP
-                                     else GestureAccessibilityService.ACTION_START
-                        context.startService(
-                            Intent(context, GestureAccessibilityService::class.java).apply { this.action = action }
+                        context.sendBroadcast(
+                            Intent(GestureAccessibilityService.ACTION_TOGGLE).apply {
+                                `package` = context.packageName
+                            }
                         )
                         serviceRunning = !serviceRunning
                     },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (serviceRunning) MaterialTheme.colorScheme.error
@@ -199,7 +201,9 @@ private fun GestureGuide() {
         "Gesture Reference",
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
     )
 
     val gestures = listOf(
@@ -241,8 +245,12 @@ private fun isAccessibilityEnabled(context: Context): Boolean {
     return try {
         val enabled = Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED)
         if (enabled != 1) return false
-        val services = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
-        TextUtils.SimpleStringSplitter(':').apply { setString(services) }.any { it.equals(service, ignoreCase = true) }
+        val services = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        TextUtils.SimpleStringSplitter(':').apply { setString(services) }
+            .any { it.equals(service, ignoreCase = true) }
     } catch (e: Exception) {
         false
     }
