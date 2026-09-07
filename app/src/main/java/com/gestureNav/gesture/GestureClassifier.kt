@@ -7,16 +7,20 @@ import kotlin.math.sqrt
 object GestureClassifier {
 
     private const val PINCH_THRESHOLD = 0.06f
-    private const val SWIPE_X_THRESHOLD = 0.20f
-    private const val SWIPE_Y_THRESHOLD = 0.16f
-
-    // Fist: all 4 fingertips must be well below their PIP joints (not just MCP)
+    private const val SWIPE_X_THRESHOLD = 0.18f
+    private const val SWIPE_Y_THRESHOLD = 0.14f
+    private const val SCROLL_Y_THRESHOLD = 0.06f
     private const val FIST_CURL_THRESHOLD = 0.04f
 
+    private var motionStartY: Float? = null
+    private var motionStartX: Float? = null
     private var prevWristY: Float? = null
     private var prevWristX: Float? = null
+
     private var framesSinceGesture = 0
-    private const val GESTURE_COOLDOWN_FRAMES = 15
+    private var motionFrames = 0
+    private const val GESTURE_COOLDOWN_FRAMES = 12
+    private const val MOTION_SAMPLE_FRAMES = 4
 
     fun classify(landmarks: List<NormalizedLandmark>): GestureEvent {
         if (landmarks.size < 21) return GestureEvent.NONE
@@ -34,14 +38,6 @@ object GestureClassifier {
 
         framesSinceGesture++
 
-        // Pinch: thumb + index close
-        if (dist(thumbTip, indexTip) < PINCH_THRESHOLD && framesSinceGesture > GESTURE_COOLDOWN_FRAMES) {
-            framesSinceGesture = 0
-            prevWristX = null; prevWristY = null
-            return GestureEvent.PINCH
-        }
-
-        // Fist: all fingertips below their PIP joints (tighter check than MCP)
         val indexCurled  = indexTip.y()  > indexPip.y()  + FIST_CURL_THRESHOLD
         val middleCurled = middleTip.y() > middlePip.y() + FIST_CURL_THRESHOLD
         val ringCurled   = ringTip.y()   > ringPip.y()   + FIST_CURL_THRESHOLD
@@ -50,46 +46,99 @@ object GestureClassifier {
         val isFist = indexCurled && middleCurled && ringCurled && pinkyCurled
         val isOpenPalm = !indexCurled && !middleCurled && !ringCurled && !pinkyCurled
 
+        val onlyIndexUp = !indexCurled && middleCurled && ringCurled && pinkyCurled
+        val indexAndMiddleUp = !indexCurled && !middleCurled && ringCurled && pinkyCurled
+
+        if (dist(thumbTip, indexTip) < PINCH_THRESHOLD && framesSinceGesture > GESTURE_COOLDOWN_FRAMES) {
+            framesSinceGesture = 0
+            clearMotion()
+            return GestureEvent.PINCH
+        }
+
         if (isFist && framesSinceGesture > GESTURE_COOLDOWN_FRAMES) {
             framesSinceGesture = 0
-            prevWristX = null; prevWristY = null
+            clearMotion()
             return GestureEvent.FIST_CLOSED
         }
 
+        if (onlyIndexUp || indexAndMiddleUp) {
+            val currentY = wrist.y()
+            val currentX = wrist.x()
+
+            if (motionStartY == null) {
+                motionStartY = currentY
+                motionStartX = currentX
+                motionFrames = 0
+            } else {
+                motionFrames++
+            }
+
+            val startY = motionStartY!!
+            val startX = motionStartX!!
+            val dy = currentY - startY
+            val dx = currentX - startX
+
+            if (motionFrames >= MOTION_SAMPLE_FRAMES && framesSinceGesture > GESTURE_COOLDOWN_FRAMES) {
+                if (abs(dy) > SCROLL_Y_THRESHOLD) {
+                    framesSinceGesture = 0
+                    clearMotion()
+                    return if (dy < 0) GestureEvent.SCROLL_UP else GestureEvent.SCROLL_DOWN
+                }
+            }
+
+            prevWristY = currentY
+            prevWristX = currentX
+            return GestureEvent.NONE
+        }
+
         if (isOpenPalm) {
-            val prevY = prevWristY
-            val prevX = prevWristX
-            prevWristY = wrist.y()
-            prevWristX = wrist.x()
+            val currentY = wrist.y()
+            val currentX = wrist.x()
 
-            if (prevY != null && prevX != null && framesSinceGesture > GESTURE_COOLDOWN_FRAMES) {
-                val dy = wrist.y() - prevY
-                val dx = wrist.x() - prevX
+            if (motionStartY == null) {
+                motionStartY = currentY
+                motionStartX = currentX
+                motionFrames = 0
+            } else {
+                motionFrames++
+            }
 
+            val startY = motionStartY!!
+            val startX = motionStartX!!
+            val dy = currentY - startY
+            val dx = currentX - startX
+
+            if (motionFrames >= MOTION_SAMPLE_FRAMES && framesSinceGesture > GESTURE_COOLDOWN_FRAMES) {
                 if (abs(dy) > abs(dx)) {
-                    if (dy < -SWIPE_Y_THRESHOLD) {
+                    if (abs(dy) > SWIPE_Y_THRESHOLD) {
                         framesSinceGesture = 0
-                        return GestureEvent.SCROLL_UP
-                    } else if (dy > SWIPE_Y_THRESHOLD) {
-                        framesSinceGesture = 0
-                        return GestureEvent.SCROLL_DOWN
+                        clearMotion()
+                        return if (dy < 0) GestureEvent.SCROLL_UP else GestureEvent.SCROLL_DOWN
                     }
                 } else {
-                    if (dx < -SWIPE_X_THRESHOLD) {
+                    if (abs(dx) > SWIPE_X_THRESHOLD) {
                         framesSinceGesture = 0
-                        return GestureEvent.SWIPE_LEFT
-                    } else if (dx > SWIPE_X_THRESHOLD) {
-                        framesSinceGesture = 0
-                        return GestureEvent.SWIPE_RIGHT
+                        clearMotion()
+                        return if (dx < 0) GestureEvent.SWIPE_LEFT else GestureEvent.SWIPE_RIGHT
                     }
                 }
             }
+
+            prevWristY = currentY
+            prevWristX = currentX
             return GestureEvent.OPEN_PALM
         }
 
+        clearMotion()
         prevWristY = wrist.y()
         prevWristX = wrist.x()
         return GestureEvent.NONE
+    }
+
+    private fun clearMotion() {
+        motionStartY = null
+        motionStartX = null
+        motionFrames = 0
     }
 
     private fun dist(a: NormalizedLandmark, b: NormalizedLandmark): Float {
@@ -101,6 +150,7 @@ object GestureClassifier {
     fun reset() {
         prevWristY = null
         prevWristX = null
+        clearMotion()
         framesSinceGesture = 0
     }
 }
