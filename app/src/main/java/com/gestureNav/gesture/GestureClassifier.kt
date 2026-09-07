@@ -7,8 +7,8 @@ import kotlin.math.sqrt
 object GestureClassifier {
 
     private const val PINCH_THRESHOLD = 0.06f
-    private const val SWIPE_X_THRESHOLD = 0.18f
-    private const val SWIPE_Y_THRESHOLD = 0.14f
+    private const val SWIPE_X_THRESHOLD = 0.10f
+    private const val SWIPE_Y_THRESHOLD = 0.08f
     private const val SCROLL_Y_THRESHOLD = 0.06f
     private const val FIST_CURL_THRESHOLD = 0.04f
 
