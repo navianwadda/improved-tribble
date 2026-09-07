@@ -5,11 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.text.TextUtils
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -36,6 +37,7 @@ import com.gestureNav.service.GestureAccessibilityService
 fun GestureNavApp() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val scrollState = rememberScrollState()
 
     val cameraPermission = rememberPermissionState(Manifest.permission.CAMERA)
     var accessibilityEnabled by remember { mutableStateOf(isAccessibilityEnabled(context)) }
@@ -61,6 +63,7 @@ fun GestureNavApp() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -103,42 +106,40 @@ fun GestureNavApp() {
             Spacer(Modifier.height(40.dp))
 
             if (allReady) {
-                AnimatedContent(targetState = serviceRunning, label = "toggle") { running ->
-                    Button(
-                        onClick = {
-                            val action = if (running) GestureAccessibilityService.ACTION_STOP
-                                       else GestureAccessibilityService.ACTION_START
-                            context.startService(
-                                Intent(context, GestureAccessibilityService::class.java).apply { this.action = action }
-                            )
-                            serviceRunning = !running
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (running) MaterialTheme.colorScheme.error
-                                            else MaterialTheme.colorScheme.primary
+                Button(
+                    onClick = {
+                        val action = if (serviceRunning) GestureAccessibilityService.ACTION_STOP
+                                     else GestureAccessibilityService.ACTION_START
+                        context.startService(
+                            Intent(context, GestureAccessibilityService::class.java).apply { this.action = action }
                         )
-                    ) {
-                        Icon(
-                            imageVector = if (running) Icons.Default.Stop else Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = if (running) "Stop GestureNav" else "Start GestureNav",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+                        serviceRunning = !serviceRunning
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (serviceRunning) MaterialTheme.colorScheme.error
+                                         else MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = if (serviceRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (serviceRunning) "Stop GestureNav" else "Start GestureNav",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
 
                 Spacer(Modifier.height(32.dp))
                 GestureGuide()
             }
+
+            Spacer(Modifier.height(32.dp))
         }
     }
 }
@@ -178,14 +179,11 @@ private fun SetupStep(
                     Text("$number", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
-
             Spacer(Modifier.width(14.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 Text(subtitle, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-
             if (actionLabel != null) {
                 TextButton(onClick = onAction) {
                     Text(actionLabel, fontWeight = FontWeight.Bold)
@@ -201,17 +199,14 @@ private fun GestureGuide() {
         "Gesture Reference",
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
     )
 
     val gestures = listOf(
-        Triple(Icons.Default.KeyboardArrowUp, "Open palm — move up", "Scroll up"),
-        Triple(Icons.Default.KeyboardArrowDown, "Open palm — move down", "Scroll down"),
+        Triple(Icons.Default.TouchApp, "Touch & swipe (normal)", "Scroll"),
         Triple(Icons.Default.ArrowBack, "Open palm — swipe right", "Go back"),
         Triple(Icons.Default.Apps, "Open palm — swipe left", "Recents"),
-        Triple(Icons.Default.Home, "Close fist", "Home"),
+        Triple(Icons.Default.Home, "Close fist (tight)", "Home"),
         Triple(Icons.Default.Notifications, "Pinch fingers", "Notifications")
     )
 
@@ -244,18 +239,10 @@ private fun GestureRow(icon: ImageVector, gesture: String, action: String) {
 private fun isAccessibilityEnabled(context: Context): Boolean {
     val service = "${context.packageName}/${GestureAccessibilityService::class.java.canonicalName}"
     return try {
-        val enabled = Settings.Secure.getInt(
-            context.contentResolver,
-            Settings.Secure.ACCESSIBILITY_ENABLED
-        )
+        val enabled = Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED)
         if (enabled != 1) return false
-        val services = Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
-        TextUtils.SimpleStringSplitter(':').apply { setString(services) }.any {
-            it.equals(service, ignoreCase = true)
-        }
+        val services = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
+        TextUtils.SimpleStringSplitter(':').apply { setString(services) }.any { it.equals(service, ignoreCase = true) }
     } catch (e: Exception) {
         false
     }
